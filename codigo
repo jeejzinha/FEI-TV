@@ -1,0 +1,115 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+
+void menu_inicial();
+void criar_conta();
+void fazer_login();
+void menu_principal();
+
+void invalida(){
+    printf("opção invalida tente novamente\n");
+}
+int username_valido(char *username) {
+       FILE *f = fopen("usuarios.txt", "r");
+
+    if (f == NULL) {
+        return 1; 
+    }
+
+    char u[100], s[100];
+
+    while (fscanf(f, "%[^;];%[^\n]\n", u, s) == 2) {
+        if (strcmp(u, username) == 0) {
+            fclose(f);
+            return 0; // já existe
+        }
+    }
+
+    fclose(f);
+    return 1; // não existe ? válido
+}
+void criar_conta(){
+  char username[100], senha[100];
+
+    printf("=== Criar Conta ===\n");
+
+    printf("Crie seu username *Be creative ;) : ");
+    scanf(" %[^\n]", username); //lê tudo até encontrar o Enter
+
+    while(!username_valido(username)) {printf("Este username ja existe, tente outro.\n");
+                                       printf("Crie seu username *Be creative ;) : ");
+                                       scanf(" %[^\n]", username);}
+
+    printf("Crie sua senha: ");
+    scanf(" %[^\n]", senha);
+
+    FILE *f = fopen("usuarios.txt", "a"); //
+    fprintf(f, "%s;%s\n", username, senha); //
+    fclose(f);//
+
+    printf("Conta criada com sucesso!\n");
+
+    menu_inicial();
+}
+void fazer_login(){
+   char username[100], senha[100];
+   printf("=== Área de Login ===\n");
+   printf("Digite seu username: \n");
+   scanf(" %[^\n]", username);
+   printf("Insira sua senha: \n");
+   scanf(" %[^\n]", senha);
+
+      // Valida no arquivo
+    FILE *f = fopen("usuarios.txt", "r");
+
+    char u[100], s[100];
+    int encontrado = 0;
+    while(fscanf(f, "%[^;];%[^\n]", u, s) == 2) {
+        if(strcmp(u, username) == 0 && strcmp(s, senha) == 0) {
+            encontrado = 1;
+            break;
+        }
+    }
+    fclose(f);
+
+    if(encontrado) {printf("Ola, %s, nice to see u here :)\n", username);menu_principal();} 
+    else {printf("Username ou senha incorretos.\n");fazer_login();}
+}
+void menu_inicial(){
+    printf("A. Criar conta \n");
+    printf("B. Fazer Login \n");
+    char opc;
+    scanf(" %c",&opc);
+    if(opc == 'A' || opc == 'a'){criar_conta();}
+    else if (opc == 'B' || opc== 'b' ){fazer_login();}
+    else{invalida();menu_inicial();}
+}
+void menu_principal(){
+    printf("===FEI TV===\n");
+    printf("1. Buscar vídeo \n");
+    printf("2. Playlists \n");
+    printf("3. Vídeos curtidos \n");
+    printf("3. Sair \n");
+    int opc;
+    scanf(" %c",&opc);
+     if(opc == 1){buscar();}
+    else if (opc == 2){playlists();}
+    else if (opc == 3){curtidos();}
+    else if (opc == 4){menu_iicial();}
+    else{invalida();menu_principal();}
+}
+void buscar(){
+
+
+
+
+}
+int main(int argc, char *argv[])
+{
+	printf("==Bem-vinda(o) ao FeiTV== \n");
+    menu_inicial();
+    system("pause");
+    return 0;
+}
