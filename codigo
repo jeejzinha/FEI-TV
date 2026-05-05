@@ -7,6 +7,9 @@ void menu_inicial();
 void criar_conta();
 void fazer_login();
 void menu_principal();
+void buscar();
+void playlists();
+void curtidos();
 
 void invalida(){
     printf("opção invalida tente novamente\n");
@@ -64,6 +67,9 @@ void fazer_login(){
       // Valida no arquivo
     FILE *f = fopen("usuarios.txt", "r");
 
+        if (f == NULL) {printf("Erro: arquivo de usuarios nao encontrado.\n");
+        return;}
+
     char u[100], s[100];
     int encontrado = 0;
     while(fscanf(f, "%[^;];%[^\n]", u, s) == 2) {
@@ -91,17 +97,116 @@ void menu_principal(){
     printf("1. Buscar vídeo \n");
     printf("2. Playlists \n");
     printf("3. Vídeos curtidos \n");
-    printf("3. Sair \n");
+    printf("4. Sair \n");
     int opc;
-    scanf(" %c",&opc);
+    scanf(" %d",&opc);
      if(opc == 1){buscar();}
     else if (opc == 2){playlists();}
     else if (opc == 3){curtidos();}
-    else if (opc == 4){menu_iicial();}
+    else if (opc == 4){menu_inicial();}
     else{invalida();menu_principal();}
 }
-void buscar(){
+typedef struct {
+    char titulo[100];
+    char duracao[10];
+    char descricao[200];
+    char canal[100];
+    char curtido[5];
+} Video;
 
+void to_lower(char *str, char *dest) {
+    for (int i = 0; str[i]; i++)
+        dest[i] = tolower(str[i]);
+    dest[strlen(str)] = '\0';
+}
+void buscar(){
+    FILE *arq = fopen("videos.txt", "r");
+    if (!arq) {printf("Erro ao abrir o arquivo.\n"); return;}
+
+    // pula o cabeçalho
+    char linha[512];
+    fgets(linha, sizeof(linha), arq);
+
+    // lê todos os vídeos
+    Video videos[100];
+    int total = 0;
+    while (fgets(linha, sizeof(linha), arq)) {
+        // remove \n do final
+        linha[strcspn(linha, "\n")] = '\0';
+
+        Video v;
+        v.curtido[0] = '\0'; // começa vazio (não curtido)
+
+        int lido = sscanf(linha, " %99[^;]; %9[^;]; %199[^;]; %99[^;]; %4[^\n]",
+                          v.titulo, v.duracao, v.descricao, v.canal, v.curtido);
+
+        if (lido >= 4)
+            videos[total++] = v;
+    }
+    fclose(arq);
+
+    // pede o termo de busca
+    char busca[100];
+    printf("Digite o título do vídeo: ");
+    scanf(" %99[^\n]", busca);
+
+    // busca case-insensitive em qualquer parte do título
+    char busca_low[100], titulo_low[100];
+    to_lower(busca, busca_low);
+
+    Video resultados[100];
+    int n_res = 0;
+    for (int i = 0; i < total; i++) {
+        to_lower(videos[i].titulo, titulo_low);
+        if (strstr(titulo_low, busca_low))
+            resultados[n_res++] = videos[i];
+    }
+
+    if (n_res == 0) {
+        printf("Nenhum vídeo encontrado.\n");
+        menu_principal();
+        return;
+    }
+
+    // lista os resultados
+    printf("\n");
+    for (int i = 0; i < n_res; i++)
+        printf("%d- %s\n", i + 1, resultados[i].titulo);
+
+    // usuário escolhe
+    int escolha;
+    printf("\nNúmero do vídeo: ");
+    scanf("%d", &escolha);
+
+    if (escolha < 1 || escolha > n_res) {
+        printf("Opção inválida.\n");
+        buscar();
+        return;
+    }
+
+    Video v = resultados[escolha - 1];
+
+    // exibe os detalhes
+    printf("\n%s\n", v.titulo);
+    printf("Duração: %s\n", v.duracao);
+    printf("Descrição: %s\n", v.descricao);
+    printf("Canal: %s\n", v.canal);
+
+    // mostra curtido só se tiver <3
+    if (strlen(v.curtido) > 0)
+        printf("-> %s\n", v.curtido);
+
+    // submenu
+    printf("\n1- <3\n");
+    printf("2- Adicionar à playlist\n");
+    printf("3- Voltar (menu principal)\n");
+
+    int opc;
+    scanf(" %d", &opc);
+    if      (opc == 1) { /* curtir() */ }
+    else if (opc == 2) { /* adicionar_playlist() */ }
+    else if (opc == 3) { menu_principal(); }
+    else               { invalida(); buscar(); }
 
 
 
