@@ -3,6 +3,12 @@
 #include <ctype.h>
 #include <string.h>
 
+/* ───────────────────────────────────────────
+   SESSÃO: guarda o usuário logado globalmente
+   ─────────────────────────────────────────── */
+char usuario_logado[100] = "";
+
+/* ───────────── protótipos ───────────────── */
 void menu_inicial();
 void criar_conta();
 void fazer_login();
@@ -11,209 +17,370 @@ void buscar();
 void playlists();
 void curtidos();
 
-void invalida(){
-    printf("opção invalida tente novamente\n");
+/* ══════════════════════════════════════════
+   UTILITÁRIOS
+   ══════════════════════════════════════════ */
+void invalida() {
+    printf("Opcao invalida, tente novamente.\n");
 }
-int username_valido(char *username) {
-       FILE *f = fopen("usuarios.txt", "r");
 
-    if (f == NULL) {
-        return 1; 
-    }
+void to_lower(char *str, char *dest) {
+    int i;
+    for (i = 0; str[i]; i++)
+        dest[i] = tolower((unsigned char)str[i]);
+    dest[strlen(str)] = '\0';
+}
 
-    char u[100], s[100];
+/* ══════════════════════════════════════════
+   STRUCT DE VIDEO
+   ══════════════════════════════════════════ */
+typedef struct {
+    char titulo[100];
+    char duracao[10];
+    char descricao[200];
+    char canal[100];
+} Video;
 
-    while (fscanf(f, "%[^;];%[^\n]\n", u, s) == 2) {
-        if (strcmp(u, username) == 0) {
+/* ══════════════════════════════════════════
+   CURTIDAS
+   ══════════════════════════════════════════
+   Arquivo curtidos.txt: uma linha por curtida
+   Formato: username;titulo_do_video
+   ══════════════════════════════════════════ */
+
+/* Retorna 1 se o usuário já curtiu o vídeo, 0 caso contrário */
+int ja_curtiu(const char *titulo) {
+    FILE *f = fopen("curtidos.txt", "r");
+    if (!f) return 0;
+
+    char u[100], t[100];
+    while (fscanf(f, " %99[^;];%99[^\n]", u, t) == 2) {
+        if (strcmp(u, usuario_logado) == 0 && strcmp(t, titulo) == 0) {
             fclose(f);
-            return 0; // já existe
+            return 1;
         }
     }
-
     fclose(f);
-    return 1; // não existe ? válido
+    return 0;
 }
-void criar_conta(){
-  char username[100], senha[100];
 
+/* Adiciona curtida ao arquivo */
+void curtir(const char *titulo) {
+    FILE *f = fopen("curtidos.txt", "a");
+    if (!f) { printf("Erro ao salvar curtida.\n"); return; }
+    fprintf(f, "%s;%s\n", usuario_logado, titulo);
+    fclose(f);
+    printf("<3 Video curtido!\n");
+}
+
+/* Remove curtida do arquivo (reescreve sem a linha) */
+void descurtir(const char *titulo) {
+    FILE *f = fopen("curtidos.txt", "r");
+    if (!f) return;
+
+    /* lê todas as linhas */
+    char linhas[500][210];
+    int total = 0;
+    char u[100], t[100];
+    while (fscanf(f, " %99[^;];%99[^\n]", u, t) == 2) {
+        /* mantém todas EXCETO a do usuário+título atual */
+        if (!(strcmp(u, usuario_logado) == 0 && strcmp(t, titulo) == 0)) {
+            snprintf(linhas[total], sizeof(linhas[total]), "%s;%s", u, t);
+            total++;
+        }
+    }
+    fclose(f);
+
+    /* reescreve o arquivo */
+    f = fopen("curtidos.txt", "w");
+    if (!f) { printf("Erro ao atualizar curtidas.\n"); return; }
+    {
+        int i;
+        for (i = 0; i < total; i++)
+            fprintf(f, "%s\n", linhas[i]);
+    }
+    fclose(f);
+
+    printf("Video removido dos curtidos.\n");
+}
+
+/* ══════════════════════════════════════════
+   CONTA / LOGIN
+   ══════════════════════════════════════════ */
+int username_valido(char *username) {
+    FILE *f = fopen("usuarios.txt", "r");
+    if (!f) return 1; /* arquivo não existe ainda → username livre */
+
+    char u[100], s[100];
+    while (fscanf(f, "%99[^;];%99[^\n]\n", u, s) == 2) {
+        if (strcmp(u, username) == 0) {
+            fclose(f);
+            return 0; /* já existe */
+        }
+    }
+    fclose(f);
+    return 1; /* disponível */
+}
+
+void criar_conta() {
+    char username[100], senha[100];
     printf("=== Criar Conta ===\n");
 
     printf("Crie seu username *Be creative ;) : ");
-    scanf(" %[^\n]", username); //lê tudo até encontrar o Enter
+    scanf(" %99[^\n]", username);
 
-    while(!username_valido(username)) {printf("Este username ja existe, tente outro.\n");
-                                       printf("Crie seu username *Be creative ;) : ");
-                                       scanf(" %[^\n]", username);}
+    while (!username_valido(username)) {
+        printf("Este username ja existe, tente outro.\n");
+        printf("Crie seu username *Be creative ;) : ");
+        scanf(" %99[^\n]", username);
+    }
 
     printf("Crie sua senha: ");
-    scanf(" %[^\n]", senha);
+    scanf(" %99[^\n]", senha);
 
-    FILE *f = fopen("usuarios.txt", "a"); //
-    fprintf(f, "%s;%s\n", username, senha); //
-    fclose(f);//
+    FILE *f = fopen("usuarios.txt", "a");
+    fprintf(f, "%s;%s\n", username, senha);
+    fclose(f);
 
     printf("Conta criada com sucesso!\n");
-
     menu_inicial();
 }
-void fazer_login(){
-   char username[100], senha[100];
-   printf("=== Área de Login ===\n");
-   printf("Digite seu username: \n");
-   scanf(" %[^\n]", username);
-   printf("Insira sua senha: \n");
-   scanf(" %[^\n]", senha);
 
-      // Valida no arquivo
+void fazer_login() {
+    char username[100], senha[100];
+    printf("=== Area de Login ===\n");
+    printf("Digite seu username: ");
+    scanf(" %99[^\n]", username);
+    printf("Insira sua senha: ");
+    scanf(" %99[^\n]", senha);
+
     FILE *f = fopen("usuarios.txt", "r");
-
-        if (f == NULL) {printf("Erro: arquivo de usuarios nao encontrado.\n");
-        return;}
+    if (!f) { printf("Erro: arquivo de usuarios nao encontrado.\n"); return; }
 
     char u[100], s[100];
     int encontrado = 0;
-    while(fscanf(f, "%[^;];%[^\n]", u, s) == 2) {
-        if(strcmp(u, username) == 0 && strcmp(s, senha) == 0) {
+    while (fscanf(f, "%99[^;];%99[^\n]", u, s) == 2) {
+        if (strcmp(u, username) == 0 && strcmp(s, senha) == 0) {
             encontrado = 1;
             break;
         }
     }
     fclose(f);
 
-    if(encontrado) {printf("Ola, %s, nice to see u here :)\n", username);menu_principal();} 
-    else {printf("Username ou senha incorretos.\n");fazer_login();}
+    if (encontrado) {
+        /* ★ salva o usuário na sessão global */
+        strncpy(usuario_logado, username, sizeof(usuario_logado) - 1);
+        printf("Ola, %s, nice to see u here :)\n", usuario_logado);
+        menu_principal();
+    } else {
+        printf("Username ou senha incorretos.\n");
+        fazer_login();
+    }
 }
-void menu_inicial(){
-    printf("A. Criar conta \n");
-    printf("B. Fazer Login \n");
+
+/* ══════════════════════════════════════════
+   MENUS
+   ══════════════════════════════════════════ */
+void menu_inicial() {
+    /* limpa sessão ao voltar para o menu inicial */
+    usuario_logado[0] = '\0';
+
+    printf("A. Criar conta\n");
+    printf("B. Fazer Login\n");
     char opc;
-    scanf(" %c",&opc);
-    if(opc == 'A' || opc == 'a'){criar_conta();}
-    else if (opc == 'B' || opc== 'b' ){fazer_login();}
-    else{invalida();menu_inicial();}
+    scanf(" %c", &opc);
+    if      (opc == 'A' || opc == 'a') { criar_conta(); }
+    else if (opc == 'B' || opc == 'b') { fazer_login(); }
+    else    { invalida(); menu_inicial(); }
 }
-void menu_principal(){
-    printf("===FEI TV===\n");
-    printf("1. Buscar vídeo \n");
-    printf("2. Playlists \n");
-    printf("3. Vídeos curtidos \n");
-    printf("4. Sair \n");
+
+void menu_principal() {
+    printf("\n===FEI TV===\n");
+    printf("1. Buscar video\n");
+    printf("2. Playlists\n");
+    printf("3. Videos curtidos\n");
+    printf("4. Sair\n");
     int opc;
-    scanf(" %d",&opc);
-     if(opc == 1){buscar();}
-    else if (opc == 2){playlists();}
-    else if (opc == 3){curtidos();}
-    else if (opc == 4){menu_inicial();}
-    else{invalida();menu_principal();}
+    scanf(" %d", &opc);
+    if      (opc == 1) { buscar(); }
+    else if (opc == 2) { playlists(); }
+    else if (opc == 3) { curtidos(); }
+    else if (opc == 4) { menu_inicial(); }
+    else    { invalida(); menu_principal(); }
 }
-typedef struct {
-    char titulo[100];
-    char duracao[10];
-    char descricao[200];
-    char canal[100];
-    char curtido[5];
-} Video;
 
-void to_lower(char *str, char *dest) {
-    for (int i = 0; str[i]; i++)
-        dest[i] = tolower(str[i]);
-    dest[strlen(str)] = '\0';
-}
-void buscar(){
+/* ══════════════════════════════════════════
+   BUSCAR
+   ══════════════════════════════════════════ */
+void buscar() {
     FILE *arq = fopen("videos.txt", "r");
-    if (!arq) {printf("Erro ao abrir o arquivo.\n"); return;}
+    if (!arq) { printf("Erro ao abrir o arquivo de videos.\n"); return; }
 
-    // pula o cabeçalho
+    /* pula o cabeçalho */
     char linha[512];
     fgets(linha, sizeof(linha), arq);
 
-    // lê todos os vídeos
     Video videos[100];
     int total = 0;
     while (fgets(linha, sizeof(linha), arq)) {
-        // remove \n do final
         linha[strcspn(linha, "\n")] = '\0';
-
         Video v;
-        v.curtido[0] = '\0'; // começa vazio (não curtido)
-
-        int lido = sscanf(linha, " %99[^;]; %9[^;]; %199[^;]; %99[^;]; %4[^\n]",
-                          v.titulo, v.duracao, v.descricao, v.canal, v.curtido);
-
+        int lido = sscanf(linha, "%99[^;];%9[^;];%199[^;];%99[^\n]",
+                          v.titulo, v.duracao, v.descricao, v.canal);
         if (lido >= 4)
             videos[total++] = v;
     }
     fclose(arq);
 
-    // pede o termo de busca
     char busca[100];
-    printf("Digite o título do vídeo: ");
+    printf("Digite o titulo do video: ");
     scanf(" %99[^\n]", busca);
 
-    // busca case-insensitive em qualquer parte do título
     char busca_low[100], titulo_low[100];
     to_lower(busca, busca_low);
 
     Video resultados[100];
     int n_res = 0;
-    for (int i = 0; i < total; i++) {
-        to_lower(videos[i].titulo, titulo_low);
-        if (strstr(titulo_low, busca_low))
-            resultados[n_res++] = videos[i];
+    {
+        int i;
+        for (i = 0; i < total; i++) {
+            to_lower(videos[i].titulo, titulo_low);
+            if (strstr(titulo_low, busca_low))
+                resultados[n_res++] = videos[i];
+        }
     }
 
     if (n_res == 0) {
-        printf("Nenhum vídeo encontrado.\n");
+        printf("Nenhum video encontrado.\n");
         menu_principal();
         return;
     }
 
-    // lista os resultados
     printf("\n");
-    for (int i = 0; i < n_res; i++)
-        printf("%d- %s\n", i + 1, resultados[i].titulo);
+    {
+        int i;
+        for (i = 0; i < n_res; i++)
+            printf("%d- %s\n", i + 1, resultados[i].titulo);
+    }
 
-    // usuário escolhe
     int escolha;
-    printf("\nNúmero do vídeo: ");
+    printf("\nNumero do video: ");
     scanf("%d", &escolha);
 
     if (escolha < 1 || escolha > n_res) {
-        printf("Opção inválida.\n");
+        printf("Opcao invalida.\n");
         buscar();
         return;
     }
 
     Video v = resultados[escolha - 1];
 
-    // exibe os detalhes
+    /* exibe detalhes */
     printf("\n%s\n", v.titulo);
-    printf("Duração: %s\n", v.duracao);
-    printf("Descrição: %s\n", v.descricao);
+    printf("Duracao: %s\n", v.duracao);
+    printf("Descricao: %s\n", v.descricao);
     printf("Canal: %s\n", v.canal);
 
-    // mostra curtido só se tiver <3
-    if (strlen(v.curtido) > 0)
-        printf("-> %s\n", v.curtido);
+    /* ★ mostra se já curtiu */
+    int curtido = ja_curtiu(v.titulo);
+    if (curtido)
+        printf("[<3 Voce curtiu este video]\n");
 
-    // submenu
-    printf("\n1- <3\n");
-    printf("2- Adicionar à playlist\n");
+    /* submenu */
+    printf("\n");
+    if (curtido)
+        printf("1- Descurtir\n");
+    else
+        printf("1- <3 Curtir\n");
+    printf("2- Adicionar a playlist\n");
     printf("3- Voltar (menu principal)\n");
 
     int opc;
     scanf(" %d", &opc);
-    if      (opc == 1) { /* curtir() */ }
-    else if (opc == 2) { /* adicionar_playlist() */ }
-    else if (opc == 3) { menu_principal(); }
-    else               { invalida(); buscar(); }
 
-
-
+    if (opc == 1) {
+        if (curtido)
+            descurtir(v.titulo);
+        else
+            curtir(v.titulo);
+        menu_principal();
+    } else if (opc == 2) {
+        /* adicionar_playlist() — a implementar */
+        menu_principal();
+    } else if (opc == 3) {
+        menu_principal();
+    } else {
+        invalida();
+        buscar();
+    }
 }
-int main(int argc, char *argv[])
-{
-	printf("==Bem-vinda(o) ao FeiTV== \n");
+
+/* ══════════════════════════════════════════
+   VIDEOS CURTIDOS
+   ══════════════════════════════════════════ */
+void curtidos() {
+    FILE *f = fopen("curtidos.txt", "r");
+    if (!f) {
+        printf("Voce ainda nao curtiu nenhum video.\n");
+        menu_principal();
+        return;
+    }
+
+    char u[100], t[100];
+    char lista[100][100];
+    int total = 0;
+
+    while (fscanf(f, " %99[^;];%99[^\n]", u, t) == 2) {
+        if (strcmp(u, usuario_logado) == 0) {
+            strncpy(lista[total], t, 99);
+            lista[total][99] = '\0';
+            total++;
+        }
+    }
+    fclose(f);
+
+    if (total == 0) {
+        printf("Voce ainda nao curtiu nenhum video.\n");
+        menu_principal();
+        return;
+    }
+
+    printf("\n=== Seus videos curtidos ===\n");
+    {
+        int i;
+        for (i = 0; i < total; i++)
+            printf("%d- %s\n", i + 1, lista[i]);
+    }
+
+    /* opção de descurtir direto da lista */
+    printf("\n0- Voltar\nEscolha um numero para descurtir, ou 0 para voltar: ");
+    int opc;
+    scanf(" %d", &opc);
+
+    if (opc == 0) {
+        menu_principal();
+    } else if (opc >= 1 && opc <= total) {
+        descurtir(lista[opc - 1]);
+        curtidos(); /* recarrega a lista */
+    } else {
+        invalida();
+        curtidos();
+    }
+}
+
+/* ══════════════════════════════════════════
+   PLAYLISTS (stub)
+   ══════════════════════════════════════════ */
+void playlists() {
+    printf("(em breve)\n");
+    menu_principal();
+}
+
+/* ══════════════════════════════════════════
+   MAIN
+   ══════════════════════════════════════════ */
+int main(int argc, char *argv[]) {
+    printf("==Bem-vinda(o) ao FeiTV==\n");
     menu_inicial();
     system("pause");
     return 0;
