@@ -72,9 +72,6 @@ typedef struct {
 ### 3.3 Persistencia em Arquivos
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Toda a persistencia de dados e feita por meio de arquivos .txt. As operacoes de escrita utilizam o modo de abertura `"a"` (append) para adicionar registros, enquanto as operacoes de exclusao reescrevem o arquivo completo omitindo o registro a ser removido — tecnica padrao em C para edicao de arquivos de texto plano.
 
-### 3.4 Compatibilidade com C89
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O projeto foi desenvolvido e compilado no ambiente Dev-C++, que por padrao utiliza o padrao C89. Por isso, todas as declaracoes de variaveis foram posicionadas no inicio dos blocos, em conformidade com esse padrao — declaracoes dentro de `for (int i = ...)` nao sao permitidas em C89 e foram ajustadas durante o desenvolvimento.
-
 ---
 
 ## 4. Arquivos de Dados
