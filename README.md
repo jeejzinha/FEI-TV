@@ -108,7 +108,4 @@ typedef struct {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O resultado e um sistema de terminal funcional que simula as principais interacoes de uma plataforma de streaming: autenticacao segura por usuario, busca de conteudo, curtidas individuais e gerenciamento completo de playlists personalizadas, com persistencia de todos os dados entre sessoes.  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O projeto tambem foi uma oportunidade de lidar com restricoes reais de ambiente — como a compatibilidade com C89 no Dev-C++ e o comportamento de fscanf — desenvolvendo a habilidade de diagnosticar e resolver problemas de forma sistematica.
 
-### Vídeo do Projeto Funcionando
 
-[🎥 Clique aqui para ver o vídeo do projeto](https://youtube.com/shorts/c-EYRRN4zNE)
----
